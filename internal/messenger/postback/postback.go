@@ -70,6 +70,13 @@ type Postback struct {
 
 // New returns a new instance of the HTTP Postback messenger.
 func New(o Options) (*Postback, error) {
+	// DEBUG: Log if PayloadTemplate is configured
+	if o.PayloadTemplate != "" {
+		fmt.Printf("DEBUG: PayloadTemplate configured for %s: %s\n", o.Name, o.PayloadTemplate)
+	} else {
+		fmt.Printf("DEBUG: No PayloadTemplate for %s, using default JSON\n", o.Name)
+	}
+	
 	authStr := ""
 	if o.Username != "" && o.Password != "" {
 		authStr = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
