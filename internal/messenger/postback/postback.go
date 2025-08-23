@@ -7,9 +7,8 @@ import (
 	"io"
 	"net/http"
 	"net/textproto"
-	"time"
 	"text/template"
-	"strings"
+	"time"
 
 	"github.com/knadh/listmonk/models"
 )
@@ -113,7 +112,7 @@ func (p *Postback) pushWithTemplate(m models.Message) error {
 	// Create template data structure
 	data := struct {
 		Subject     string
-		FromEmail   string 
+		FromEmail   string
 		ContentType string
 		Body        string
 		Subscriber  models.Subscriber

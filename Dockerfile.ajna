@@ -1,0 +1,62 @@
+# Ajna Enhanced Listmonk Dockerfile
+# Multi-stage build for enhanced Listmonk with multi-channel support
+
+# Stage 1: Build the enhanced Listmonk binary
+FROM golang:1.23-alpine AS builder
+
+# Install build dependencies
+RUN apk --no-cache add ca-certificates tzdata git make build-base
+
+# Set working directory
+WORKDIR /src
+
+# Copy go.mod and go.sum first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Update dependencies and build the enhanced Listmonk binary
+RUN go mod tidy
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+    -ldflags="-s -w" \
+    -o listmonk cmd/*.go
+
+# Stage 2: Create the runtime image
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata shadow su-exec
+
+# Create listmonk user
+RUN addgroup -S listmonk && adduser -S listmonk -G listmonk
+
+# Set the working directory
+WORKDIR /listmonk
+
+# Copy the enhanced binary from builder stage
+COPY --from=builder /src/listmonk .
+
+# Copy configuration template
+COPY config.toml.sample config.toml
+
+# Copy the entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+
+# Make the entrypoint script executable
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Change ownership to listmonk user
+RUN chown -R listmonk:listmonk /listmonk
+
+# Expose the application port
+EXPOSE 9000
+
+# Set the entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+# Define the command to run the application
+CMD ["./listmonk"]
