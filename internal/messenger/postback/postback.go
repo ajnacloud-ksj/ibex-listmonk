@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/textproto"
 	"text/template"
@@ -70,11 +71,11 @@ type Postback struct {
 
 // New returns a new instance of the HTTP Postback messenger.
 func New(o Options) (*Postback, error) {
-	// DEBUG: Log if PayloadTemplate is configured
+	// DEBUG: Log if PayloadTemplate is configured using log package
 	if o.PayloadTemplate != "" {
-		fmt.Printf("DEBUG: PayloadTemplate configured for %s: %s\n", o.Name, o.PayloadTemplate)
+		log.Printf("DEBUG POSTBACK: PayloadTemplate configured for %s: %s", o.Name, o.PayloadTemplate)
 	} else {
-		fmt.Printf("DEBUG: No PayloadTemplate for %s, using default JSON\n", o.Name)
+		log.Printf("DEBUG POSTBACK: No PayloadTemplate for %s, using default JSON", o.Name)
 	}
 	
 	authStr := ""
