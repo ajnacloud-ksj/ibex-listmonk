@@ -106,12 +106,16 @@ func (p *Postback) Name() string {
 
 // Push pushes a message to the server.
 func (p *Postback) Push(m models.Message) error {
+	log.Printf("DEBUG PUSH: Called Push for messenger %s, PayloadTemplate: '%s'", p.o.Name, p.o.PayloadTemplate)
+	
 	// If PayloadTemplate is configured, use template-based payload generation
 	if p.o.PayloadTemplate != "" {
+		log.Printf("DEBUG PUSH: Using PayloadTemplate for %s", p.o.Name)
 		return p.pushWithTemplate(m)
 	}
 
 	// Default behavior: use standard JSON payload
+	log.Printf("DEBUG PUSH: Using default JSON for %s", p.o.Name)
 	return p.pushDefault(m)
 }
 
