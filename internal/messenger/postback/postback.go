@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/textproto"
 	"time"
+	"text/template"
+	"strings"
 
 	"github.com/knadh/listmonk/models"
 )
@@ -56,6 +58,8 @@ type Options struct {
 	MaxConns int           `json:"max_conns"`
 	Retries  int           `json:"retries"`
 	Timeout  time.Duration `json:"timeout"`
+	// PayloadTemplate allows custom payload formatting for different channels (Slack, Teams, etc.)
+	PayloadTemplate string `json:"payload_template,omitempty"`
 }
 
 // Postback represents an HTTP Message server.
@@ -95,6 +99,51 @@ func (p *Postback) Name() string {
 
 // Push pushes a message to the server.
 func (p *Postback) Push(m models.Message) error {
+	// If PayloadTemplate is configured, use template-based payload generation
+	if p.o.PayloadTemplate != "" {
+		return p.pushWithTemplate(m)
+	}
+
+	// Default behavior: use standard JSON payload
+	return p.pushDefault(m)
+}
+
+// pushWithTemplate renders a custom payload using the configured template
+func (p *Postback) pushWithTemplate(m models.Message) error {
+	// Create template data structure
+	data := struct {
+		Subject     string
+		FromEmail   string 
+		ContentType string
+		Body        string
+		Subscriber  models.Subscriber
+		Campaign    *models.Campaign
+	}{
+		Subject:     m.Subject,
+		FromEmail:   m.From,
+		ContentType: m.ContentType,
+		Body:        string(m.Body),
+		Subscriber:  m.Subscriber,
+		Campaign:    m.Campaign,
+	}
+
+	// Parse and execute template
+	tmpl, err := template.New("payload").Parse(p.o.PayloadTemplate)
+	if err != nil {
+		return fmt.Errorf("error parsing payload template: %v", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("error executing payload template: %v", err)
+	}
+
+	// Send custom payload
+	return p.exec(http.MethodPost, p.o.RootURL, buf.Bytes(), nil)
+}
+
+// pushDefault sends the standard JSON payload (backward compatibility)
+func (p *Postback) pushDefault(m models.Message) error {
 	pb := postback{
 		Subject:     m.Subject,
 		FromEmail:   m.From,

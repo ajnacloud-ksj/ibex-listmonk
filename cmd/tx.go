@@ -116,36 +116,52 @@ func (a *App) SendTxMessage(c echo.Context) error {
 				a.i18n.Ts("globals.messages.errorFetching", "name"))
 		}
 
-		// Prepare the final message.
-		msg := models.Message{}
-		msg.Subscriber = sub
-		msg.To = []string{sub.Email}
-		msg.From = m.FromEmail
-		msg.Subject = m.Subject
-		msg.ContentType = m.ContentType
-		msg.Messenger = m.Messenger
-		msg.Body = m.Body
-		for _, a := range m.Attachments {
-			msg.Attachments = append(msg.Attachments, models.Attachment{
-				Name:    a.Name,
-				Header:  a.Header,
-				Content: a.Content,
-			})
+		// Determine messengers to use (multi-channel support)
+		messengers := []string{}
+		if len(m.Messengers) > 0 {
+			// Multi-channel mode
+			messengers = m.Messengers
+		} else if m.Messenger != "" {
+			// Single-channel mode (backward compatibility)
+			messengers = []string{m.Messenger}
+		} else {
+			// Default to email
+			messengers = []string{"email"}
 		}
 
-		// Optional headers.
-		if len(m.Headers) != 0 {
-			msg.Headers = make(textproto.MIMEHeader, len(m.Headers))
-			for _, set := range m.Headers {
-				for hdr, val := range set {
-					msg.Headers.Add(hdr, val)
+		// Send to all specified messengers
+		for _, messenger := range messengers {
+			// Prepare the final message for this messenger
+			msg := models.Message{}
+			msg.Subscriber = sub
+			msg.To = []string{sub.Email}
+			msg.From = m.FromEmail
+			msg.Subject = m.Subject
+			msg.ContentType = m.ContentType
+			msg.Messenger = messenger
+			msg.Body = m.Body
+			for _, a := range m.Attachments {
+				msg.Attachments = append(msg.Attachments, models.Attachment{
+					Name:    a.Name,
+					Header:  a.Header,
+					Content: a.Content,
+				})
+			}
+
+			// Optional headers.
+			if len(m.Headers) != 0 {
+				msg.Headers = make(textproto.MIMEHeader, len(m.Headers))
+				for _, set := range m.Headers {
+					for hdr, val := range set {
+						msg.Headers.Add(hdr, val)
+					}
 				}
 			}
-		}
 
-		if err := a.manager.PushMessage(msg); err != nil {
-			a.log.Printf("error sending message (%s): %v", msg.Subject, err)
-			return err
+			if err := a.manager.PushMessage(msg); err != nil {
+				a.log.Printf("error sending message to %s (%s): %v", messenger, msg.Subject, err)
+				// Continue with other messengers instead of failing completely
+			}
 		}
 	}
 

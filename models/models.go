@@ -387,6 +387,8 @@ type TxMessage struct {
 	Headers     Headers        `json:"headers"`
 	ContentType string         `json:"content_type"`
 	Messenger   string         `json:"messenger"`
+	// Messengers allows sending to multiple channels in a single API call
+	Messengers  []string       `json:"messengers,omitempty"`
 
 	// File attachments added from multi-part form data.
 	Attachments []Attachment `json:"-"`
