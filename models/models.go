@@ -386,7 +386,8 @@ type TxChannel struct {
 type TxMessage struct {
 	SubscriberEmails []string `json:"subscriber_emails"`
 	SubscriberIDs    []int    `json:"subscriber_ids"`
-	ListIDs          []int    `json:"list_ids,omitempty"` // Send to entire lists
+	ListIDs          []int    `json:"list_ids,omitempty"`   // Send to entire lists by ID
+	ListNames        []string `json:"list_names,omitempty"` // Send to entire lists by name
 
 	// Deprecated.
 	SubscriberEmail string `json:"subscriber_email"`

@@ -31,7 +31,7 @@ services:
 
   # Ajna Enhanced Listmonk application (with multi-channel support)
   listmonk-app:
-    image: ajna/listmonk:clean-templates
+    image: ajna/listmonk:list-names-support
     container_name: listmonk_app_isolated
     restart: unless-stopped
     ports:

@@ -82,38 +82,70 @@ func (a *App) SendTxMessage(c echo.Context) error {
 	}
 
 	var (
-		num      = len(m.SubscriberEmails)
-		isEmails = true
+		subscribers []models.Subscriber
+		notFound    []string
 	)
-	if len(m.SubscriberIDs) > 0 {
-		num = len(m.SubscriberIDs)
-		isEmails = false
-	}
 
-	notFound := []string{}
-	for n := range num {
-		var (
-			subID    int
-			subEmail string
-		)
-
-		if !isEmails {
-			subID = m.SubscriberIDs[n]
-		} else {
-			subEmail = m.SubscriberEmails[n]
+	// Handle different recipient targeting methods
+	if len(m.ListIDs) > 0 {
+		// Get all subscribers from the specified lists by ID (any subscription status)
+		listSubs, _, er := a.core.QuerySubscribers("", "", m.ListIDs, "", "id", "asc", 0, 0)
+		if er != nil {
+			return echo.NewHTTPError(http.StatusBadRequest,
+				a.i18n.Ts("globals.messages.errorFetching", "name", fmt.Sprintf("list %v subscribers", m.ListIDs)))
 		}
-
-		// Get the subscriber.
-		sub, err := a.core.GetSubscriber(subID, "", subEmail)
-		if err != nil {
-			// If the subscriber is not found, log that error and move on without halting on the list.
-			if er, ok := err.(*echo.HTTPError); ok && er.Code == http.StatusBadRequest {
-				notFound = append(notFound, fmt.Sprintf("%v", er.Message))
+		subscribers = append(subscribers, listSubs...)
+	} else if len(m.ListNames) > 0 {
+		// Get list IDs from names first, then get subscribers
+		for _, listName := range m.ListNames {
+			lists, _, er := a.core.QueryLists(listName, "", "", []string{}, "name", "asc", true, []int{}, 0, 1)
+			if er != nil {
+				return echo.NewHTTPError(http.StatusBadRequest,
+					a.i18n.Ts("globals.messages.errorFetching", "name", fmt.Sprintf("list '%s'", listName)))
+			}
+			if len(lists) == 0 {
+				notFound = append(notFound, fmt.Sprintf("List '%s' not found", listName))
 				continue
 			}
-
-			return err
+			// Get subscribers from this list
+			listIDs := []int{lists[0].ID}
+			listSubs, _, er := a.core.QuerySubscribers("", "", listIDs, "", "id", "asc", 0, 0)
+			if er != nil {
+				return echo.NewHTTPError(http.StatusBadRequest,
+					a.i18n.Ts("globals.messages.errorFetching", "name", fmt.Sprintf("list '%s' subscribers", listName)))
+			}
+			subscribers = append(subscribers, listSubs...)
 		}
+	} else if len(m.SubscriberIDs) > 0 {
+		// Get subscribers by IDs
+		for _, id := range m.SubscriberIDs {
+			sub, er := a.core.GetSubscriber(id, "", "")
+			if er != nil {
+				if e, ok := er.(*echo.HTTPError); ok && e.Code == http.StatusBadRequest {
+					notFound = append(notFound, fmt.Sprintf("Subscriber ID %d not found", id))
+					continue
+				}
+				return er
+			}
+			subscribers = append(subscribers, sub)
+		}
+	} else {
+		// Get subscribers by emails
+		for _, email := range m.SubscriberEmails {
+			sub, er := a.core.GetSubscriber(0, "", email)
+			if er != nil {
+				if e, ok := er.(*echo.HTTPError); ok && e.Code == http.StatusBadRequest {
+					notFound = append(notFound, fmt.Sprintf("Subscriber (%s) not found", email))
+					continue
+				}
+				return er
+			}
+			subscribers = append(subscribers, sub)
+		}
+	}
+
+	// Process all subscribers
+	for _, sub := range subscribers {
 
 		// Render the message (skip if using channels API, render per-channel instead)
 		if len(m.Channels) == 0 {
@@ -133,14 +165,14 @@ func (a *App) SendTxMessage(c echo.Context) error {
 					a.log.Printf("error getting template %d for channel %s: %v", channel.TemplateID, channel.Channel, err)
 					continue
 				}
-				
+
 				// Create a copy of the message for this channel
 				channelMsg := m
 				if err := channelMsg.Render(sub, channelTpl); err != nil {
 					a.log.Printf("error rendering template %d for channel %s: %v", channel.TemplateID, channel.Channel, err)
 					continue
 				}
-				
+
 				// Prepare the message for this channel
 				msg := models.Message{
 					Subscriber:  sub,
@@ -152,12 +184,12 @@ func (a *App) SendTxMessage(c echo.Context) error {
 					Body:        channelMsg.Body,
 					Data:        channelMsg.Data,
 				}
-				
+
 				// Override content if specified
 				if channel.Content != "" {
 					msg.Body = []byte(channel.Content)
 				}
-				
+
 				// Copy attachments
 				for _, attachment := range channelMsg.Attachments {
 					msg.Attachments = append(msg.Attachments, models.Attachment{
@@ -195,38 +227,38 @@ func (a *App) SendTxMessage(c echo.Context) error {
 
 			// Send to all specified messengers
 			for _, messenger := range messengers {
-			// Prepare the final message for this messenger
-			msg := models.Message{}
-			msg.Subscriber = sub
-			msg.To = []string{sub.Email}
-			msg.From = m.FromEmail
-			msg.Subject = m.Subject
-			msg.ContentType = m.ContentType
-			msg.Messenger = messenger
-			msg.Body = m.Body
-			for _, a := range m.Attachments {
-				msg.Attachments = append(msg.Attachments, models.Attachment{
-					Name:    a.Name,
-					Header:  a.Header,
-					Content: a.Content,
-				})
-			}
+				// Prepare the final message for this messenger
+				msg := models.Message{}
+				msg.Subscriber = sub
+				msg.To = []string{sub.Email}
+				msg.From = m.FromEmail
+				msg.Subject = m.Subject
+				msg.ContentType = m.ContentType
+				msg.Messenger = messenger
+				msg.Body = m.Body
+				for _, a := range m.Attachments {
+					msg.Attachments = append(msg.Attachments, models.Attachment{
+						Name:    a.Name,
+						Header:  a.Header,
+						Content: a.Content,
+					})
+				}
 
-			// Optional headers.
-			if len(m.Headers) != 0 {
-				msg.Headers = make(textproto.MIMEHeader, len(m.Headers))
-				for _, set := range m.Headers {
-					for hdr, val := range set {
-						msg.Headers.Add(hdr, val)
+				// Optional headers.
+				if len(m.Headers) != 0 {
+					msg.Headers = make(textproto.MIMEHeader, len(m.Headers))
+					for _, set := range m.Headers {
+						for hdr, val := range set {
+							msg.Headers.Add(hdr, val)
+						}
 					}
 				}
-			}
 
-			if err := a.manager.PushMessage(msg); err != nil {
-				a.log.Printf("error sending message to %s (%s): %v", messenger, msg.Subject, err)
-				// Continue with other messengers instead of failing completely
+				if err := a.manager.PushMessage(msg); err != nil {
+					a.log.Printf("error sending message to %s (%s): %v", messenger, msg.Subject, err)
+					// Continue with other messengers instead of failing completely
+				}
 			}
-		}
 		}
 	}
 
@@ -256,9 +288,35 @@ func (a *App) validateTxMessage(m models.TxMessage) (models.TxMessage, error) {
 		m.SubscriberIDs = append(m.SubscriberIDs, m.SubscriberID)
 	}
 
-	if (len(m.SubscriberEmails) == 0 && len(m.SubscriberIDs) == 0) || (len(m.SubscriberEmails) > 0 && len(m.SubscriberIDs) > 0) {
+	// Check that at least one recipient method is provided
+	hasEmails := len(m.SubscriberEmails) > 0
+	hasIDs := len(m.SubscriberIDs) > 0
+	hasListIDs := len(m.ListIDs) > 0
+	hasListNames := len(m.ListNames) > 0
+
+	if !hasEmails && !hasIDs && !hasListIDs && !hasListNames {
 		return m, echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.Ts("globals.messages.invalidFields", "name", "send subscriber_emails OR subscriber_ids"))
+			a.i18n.Ts("globals.messages.invalidFields", "name", "send subscriber_emails OR subscriber_ids OR list_ids OR list_names"))
+	}
+
+	// Check that only one recipient method is used
+	methodCount := 0
+	if hasEmails {
+		methodCount++
+	}
+	if hasIDs {
+		methodCount++
+	}
+	if hasListIDs {
+		methodCount++
+	}
+	if hasListNames {
+		methodCount++
+	}
+
+	if methodCount > 1 {
+		return m, echo.NewHTTPError(http.StatusBadRequest,
+			a.i18n.Ts("globals.messages.invalidFields", "name", "send only ONE of: subscriber_emails OR subscriber_ids OR list_ids OR list_names"))
 	}
 
 	for n, email := range m.SubscriberEmails {

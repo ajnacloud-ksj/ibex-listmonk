@@ -233,6 +233,28 @@
       }
     },
     {
+      "name": "📋 List Names (Broadcast by Name)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"list_names\": [\"Data Anomaly\"],\n  \"data\": {\n    \"alert_type\": \"SYSTEM_MAINTENANCE_BY_NAME\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing broadcast to list using list name instead of ID\",\n    \"maintenance_duration\": \"2 hours\",\n    \"affected_services\": [\"API\", \"Dashboard\", \"Reports\"],\n    \"maintenance_window\": \"2:00 AM - 4:00 AM UTC\",\n    \"timestamp\": \"{{current_timestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send alerts to entire subscriber lists using list names instead of IDs (more user-friendly)"
+      }
+    },
+    {
       "name": "🔥 Data Quality Alert",
       "request": {
         "method": "POST",
