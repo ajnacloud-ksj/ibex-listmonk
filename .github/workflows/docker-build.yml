@@ -1,0 +1,20 @@
+name: Build and Publish Enhanced Listmonk Docker Image
+
+on:
+  push:
+    branches: [ main, master, ajna-enhanced ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master, ajna-enhanced ]
+
+jobs:
+  build:
+    uses: ajnacloud-ksj/ajna-github-workflows/.github/workflows/reusable-docker-build.yml@main
+    with:
+      dockerfile_path: './Dockerfile.ajna'
+      context_path: '.'
+      enable_auto_tag: true
+      enable_latest_tag: true
+      tag_prefix: 'enhanced-v'
+    secrets:
+      gh_token: ${{ secrets.GITHUB_TOKEN }}
