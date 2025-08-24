@@ -1,0 +1,258 @@
+{
+  "info": {
+    "name": "Enhanced Listmonk Channels API",
+    "description": "Complete collection for testing the enhanced multi-channel listmonk API with per-channel templates",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "username",
+        "value": "ajna",
+        "type": "string"
+      },
+      {
+        "key": "password",
+        "value": "Fzlc4TcxMwcyROuBVmsC90dIL8d3yo9H",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:9000"
+    },
+    {
+      "key": "email_template_id",
+      "value": "5"
+    },
+    {
+      "key": "slack_template_id",
+      "value": "6"
+    }
+  ],
+  "item": [
+    {
+      "name": "📧 Single Email Channel",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"HIGH_CPU_USAGE\",\n    \"severity\": \"WARNING\",\n    \"description\": \"CPU usage exceeded 85% threshold for 5 minutes\",\n    \"metric_name\": \"cpu.usage.percent\",\n    \"current_value\": \"87.5%\",\n    \"threshold\": \"85%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send data alert to email only using the enhanced channels API"
+      }
+    },
+    {
+      "name": "💬 Single Slack Channel",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"MEMORY_LOW\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Available memory dropped below 10%\",\n    \"metric_name\": \"memory.available.percent\",\n    \"current_value\": \"8.2%\",\n    \"threshold\": \"10%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send data alert to Slack only using the enhanced channels API"
+      }
+    },
+    {
+      "name": "🚀 Multi-Channel (Email + Slack)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"DISK_FULL\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Disk usage reached 95% on production server\",\n    \"metric_name\": \"disk.usage.percent\",\n    \"current_value\": \"95.8%\",\n    \"threshold\": \"90%\",\n    \"affected_systems\": [\"web-server-01\", \"api-server-02\"],\n    \"dashboard_url\": \"https://monitoring.company.com/disk-alerts\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send data alert to BOTH email and Slack simultaneously with different templates"
+      }
+    },
+    {
+      "name": "👥 Multiple Subscriber Emails",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_emails\": [\n    \"admin@company.com\",\n    \"devops@company.com\",\n    \"your-email@example.com\"\n  ],\n  \"data\": {\n    \"alert_type\": \"DATABASE_CONNECTION_FAILURE\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Multiple database connection failures detected\",\n    \"affected_services\": [\"user-service\", \"payment-service\"],\n    \"error_count\": 47,\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send alerts to multiple subscriber emails simultaneously"
+      }
+    },
+    {
+      "name": "🆔 Subscriber IDs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"API_RATE_LIMIT_EXCEEDED\",\n    \"severity\": \"WARNING\",\n    \"description\": \"API rate limit exceeded for multiple endpoints\",\n    \"affected_endpoints\": [\"/api/users\", \"/api/payments\"],\n    \"rate_limit\": \"1000/hour\",\n    \"current_usage\": \"1247/hour\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send alerts using subscriber IDs instead of emails"
+      }
+    },
+    {
+      "name": "📋 List Targeting (Broadcast)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"list_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"SYSTEM_MAINTENANCE\",\n    \"severity\": \"INFO\",\n    \"description\": \"Scheduled maintenance window will begin at 2:00 AM UTC\",\n    \"maintenance_duration\": \"2 hours\",\n    \"affected_services\": [\"API\", \"Dashboard\", \"Reports\"],\n    \"maintenance_window\": \"2:00 AM - 4:00 AM UTC\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Send alerts to entire subscriber lists (broadcast to all list members)"
+      }
+    },
+    {
+      "name": "🎨 Custom Content Override",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"CUSTOM_CONTENT_TEST\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing custom content override feature\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}},\n      \"content\": \"{\\\"text\\\": \\\"🔧 Custom Override: CUSTOM_CONTENT_TEST\\\", \\\"blocks\\\": [{\\\"type\\\": \\\"section\\\", \\\"text\\\": {\\\"type\\\": \\\"mrkdwn\\\", \\\"text\\\": \\\"*Custom Alert*\\\\nThis message uses content override instead of template!\\\\n\\\\n*Alert:* CUSTOM_CONTENT_TEST\\\\n*Time:* {{$isoTimestamp}}\\\"}}]}\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Use custom content override for specific channels instead of template"
+      }
+    },
+    {
+      "name": "🔄 Backward Compatibility Test",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"LEGACY_API_TEST\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing backward compatibility with legacy API format\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Test that legacy API still works (backward compatibility)"
+      }
+    },
+    {
+      "name": "📊 Performance Monitoring Alert",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"subscriber_emails\": [\n    \"devops@company.com\",\n    \"sre@company.com\"\n  ],\n  \"data\": {\n    \"alert_type\": \"RESPONSE_TIME_HIGH\",\n    \"severity\": \"WARNING\",\n    \"description\": \"API response time exceeded acceptable thresholds\",\n    \"metric_name\": \"api.response_time.p95\",\n    \"current_value\": \"2.4s\",\n    \"threshold\": \"2.0s\",\n    \"affected_endpoints\": [\"/api/search\", \"/api/recommendations\"],\n    \"sample_count\": 1000,\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"dashboard_url\": \"https://monitoring.company.com/performance\",\n    \"runbook_url\": \"https://docs.company.com/runbooks/high-latency\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Real-world example: Performance monitoring alert with rich data"
+      }
+    },
+    {
+      "name": "🔥 Data Quality Alert",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"list_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"DATA_QUALITY_ISSUE\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Data quality check failed for customer dataset\",\n    \"dataset_name\": \"customer_profiles\",\n    \"affected_records\": 1247,\n    \"total_records\": 50000,\n    \"quality_score\": \"67%\",\n    \"threshold\": \"85%\",\n    \"failed_checks\": [\"email_format\", \"phone_validation\", \"address_completeness\"],\n    \"data_source\": \"CRM_SYNC_JOB_2025_08_24\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"dashboard_url\": \"https://dq.company.com/customer_profiles\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/tx",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "tx"]
+        },
+        "description": "Real-world example: Data quality alert for data engineering teams"
+      }
+    }
+  ]
+}

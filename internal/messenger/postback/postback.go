@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"net/textproto"
-	"text/template"
 	"time"
 
 	"github.com/knadh/listmonk/models"
@@ -58,8 +57,6 @@ type Options struct {
 	MaxConns int           `json:"max_conns"`
 	Retries  int           `json:"retries"`
 	Timeout  time.Duration `json:"timeout"`
-	// PayloadTemplate allows custom payload formatting for different channels (Slack, Teams, etc.)
-	PayloadTemplate string `json:"payload_template,omitempty"`
 }
 
 // Postback represents an HTTP Message server.
@@ -71,13 +68,7 @@ type Postback struct {
 
 // New returns a new instance of the HTTP Postback messenger.
 func New(o Options) (*Postback, error) {
-	// DEBUG: Log if PayloadTemplate is configured using log package
-	if o.PayloadTemplate != "" {
-		log.Printf("DEBUG POSTBACK: PayloadTemplate configured for %s: %s", o.Name, o.PayloadTemplate)
-	} else {
-		log.Printf("DEBUG POSTBACK: No PayloadTemplate for %s, using default JSON", o.Name)
-	}
-	
+
 	authStr := ""
 	if o.Username != "" && o.Password != "" {
 		authStr = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
@@ -106,51 +97,21 @@ func (p *Postback) Name() string {
 
 // Push pushes a message to the server.
 func (p *Postback) Push(m models.Message) error {
-	log.Printf("DEBUG PUSH: Called Push for messenger %s, PayloadTemplate: '%s'", p.o.Name, p.o.PayloadTemplate)
-	
-	// If PayloadTemplate is configured, use template-based payload generation
-	if p.o.PayloadTemplate != "" {
-		log.Printf("DEBUG PUSH: Using PayloadTemplate for %s", p.o.Name)
-		return p.pushWithTemplate(m)
+	// If message body looks like JSON, use it directly (like email templates)
+	if len(m.Body) > 0 && (m.Body[0] == '{' || m.Body[0] == '[') {
+		log.Printf("DEBUG PUSH: Using rendered template body as JSON for %s", p.o.Name)
+		return p.pushDirectJSON(m)
 	}
 
-	// Default behavior: use standard JSON payload
+	// Default behavior: use standard JSON payload for backwards compatibility
 	log.Printf("DEBUG PUSH: Using default JSON for %s", p.o.Name)
 	return p.pushDefault(m)
 }
 
-// pushWithTemplate renders a custom payload using the configured template
-func (p *Postback) pushWithTemplate(m models.Message) error {
-	// Create template data structure
-	data := struct {
-		Subject     string
-		FromEmail   string
-		ContentType string
-		Body        string
-		Subscriber  models.Subscriber
-		Campaign    *models.Campaign
-	}{
-		Subject:     m.Subject,
-		FromEmail:   m.From,
-		ContentType: m.ContentType,
-		Body:        string(m.Body),
-		Subscriber:  m.Subscriber,
-		Campaign:    m.Campaign,
-	}
-
-	// Parse and execute template
-	tmpl, err := template.New("payload").Parse(p.o.PayloadTemplate)
-	if err != nil {
-		return fmt.Errorf("error parsing payload template: %v", err)
-	}
-
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return fmt.Errorf("error executing payload template: %v", err)
-	}
-
-	// Send custom payload
-	return p.exec(http.MethodPost, p.o.RootURL, buf.Bytes(), nil)
+// pushDirectJSON sends the rendered template body directly as JSON (like email templates)
+func (p *Postback) pushDirectJSON(m models.Message) error {
+	// Use the rendered template body directly as the webhook payload
+	return p.exec(http.MethodPost, p.o.RootURL, m.Body, nil)
 }
 
 // pushDefault sends the standard JSON payload (backward compatibility)

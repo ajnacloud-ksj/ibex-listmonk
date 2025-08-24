@@ -1,0 +1,82 @@
+version: '3.8'
+
+# Isolated Listmonk setup for testing
+# This runs only Listmonk and its required PostgreSQL database
+# Isolated from the main Ajna data pipeline stack
+
+x-db-credentials: &db-credentials
+  POSTGRES_USER: &db-user listmonk
+  POSTGRES_PASSWORD: &db-password listmonk
+  POSTGRES_DB: &db-name listmonk
+
+services:
+  # PostgreSQL database for Listmonk
+  listmonk-db:
+    image: postgres:17-alpine
+    container_name: listmonk_db_isolated
+    restart: unless-stopped
+    ports:
+      - "5432:5432"  # Standard PostgreSQL port
+    networks:
+      - listmonk-isolated
+    environment:
+      <<: *db-credentials
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listmonk"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    volumes:
+      - listmonk-db-data:/var/lib/postgresql/data
+
+  # Ajna Enhanced Listmonk application (with multi-channel support)
+  listmonk-app:
+    image: ajna/listmonk:clean-templates
+    container_name: listmonk_app_isolated
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # Standard Listmonk port
+    networks:
+      - listmonk-isolated
+    hostname: listmonk.local
+    depends_on:
+      listmonk-db:
+        condition: service_healthy
+    command: [sh, -c, "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+    environment:
+      # Application settings
+      LISTMONK_app__address: 0.0.0.0:9000
+      
+      # Database connection
+      LISTMONK_db__user: *db-user
+      LISTMONK_db__password: *db-password
+      LISTMONK_db__database: *db-name
+      LISTMONK_db__host: listmonk-db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_db__max_open: 25
+      LISTMONK_db__max_idle: 25
+      LISTMONK_db__max_lifetime: 300s
+      
+      # Admin user (optional - can be set up via web UI)
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:-listmonk123}
+      
+      # Timezone
+      TZ: Etc/UTC
+    volumes:
+      - ./uploads:/listmonk/uploads:rw  # Mount uploads directory
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  listmonk-db-data:
+    driver: local
+
+networks:
+  listmonk-isolated:
+    driver: bridge

@@ -69,11 +69,16 @@ func (a *App) SendTxMessage(c echo.Context) error {
 		m = r
 	}
 
-	// Get the cached tx template.
-	tpl, err := a.manager.GetTpl(m.TemplateID)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest,
-			a.i18n.Ts("globals.messages.notFound", "name", fmt.Sprintf("template %d", m.TemplateID)))
+	// Get the cached tx template (skip if using channels API)
+	var tpl *models.Template
+	var err error
+	if len(m.Channels) == 0 {
+		// Only get global template for legacy API
+		tpl, err = a.manager.GetTpl(m.TemplateID)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest,
+				a.i18n.Ts("globals.messages.notFound", "name", fmt.Sprintf("template %d", m.TemplateID)))
+		}
 	}
 
 	var (
@@ -110,27 +115,86 @@ func (a *App) SendTxMessage(c echo.Context) error {
 			return err
 		}
 
-		// Render the message.
-		if err := m.Render(sub, tpl); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest,
-				a.i18n.Ts("globals.messages.errorFetching", "name"))
+		// Render the message (skip if using channels API, render per-channel instead)
+		if len(m.Channels) == 0 {
+			if err := m.Render(sub, tpl); err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest,
+					a.i18n.Ts("globals.messages.errorFetching", "name"))
+			}
 		}
 
-		// Determine messengers to use (multi-channel support)
-		messengers := []string{}
-		if len(m.Messengers) > 0 {
-			// Multi-channel mode
-			messengers = m.Messengers
-		} else if m.Messenger != "" {
-			// Single-channel mode (backward compatibility)
-			messengers = []string{m.Messenger}
+		// Enhanced multi-channel support with channels API
+		if len(m.Channels) > 0 {
+			// NEW: Enhanced channels API
+			for _, channel := range m.Channels {
+				// Get template for this specific channel
+				channelTpl, err := a.manager.GetTpl(channel.TemplateID)
+				if err != nil {
+					a.log.Printf("error getting template %d for channel %s: %v", channel.TemplateID, channel.Channel, err)
+					continue
+				}
+				
+				// Create a copy of the message for this channel
+				channelMsg := m
+				if err := channelMsg.Render(sub, channelTpl); err != nil {
+					a.log.Printf("error rendering template %d for channel %s: %v", channel.TemplateID, channel.Channel, err)
+					continue
+				}
+				
+				// Prepare the message for this channel
+				msg := models.Message{
+					Subscriber:  sub,
+					To:          []string{sub.Email},
+					From:        channelMsg.FromEmail,
+					Subject:     channelMsg.Subject,
+					ContentType: channelMsg.ContentType,
+					Messenger:   channel.Channel,
+					Body:        channelMsg.Body,
+					Data:        channelMsg.Data,
+				}
+				
+				// Override content if specified
+				if channel.Content != "" {
+					msg.Body = []byte(channel.Content)
+				}
+				
+				// Copy attachments
+				for _, attachment := range channelMsg.Attachments {
+					msg.Attachments = append(msg.Attachments, models.Attachment{
+						Name:    attachment.Name,
+						Header:  attachment.Header,
+						Content: attachment.Content,
+					})
+				}
+
+				// Optional headers
+				if len(channelMsg.Headers) != 0 {
+					msg.Headers = make(textproto.MIMEHeader, len(channelMsg.Headers))
+					for _, set := range channelMsg.Headers {
+						for hdr, val := range set {
+							msg.Headers.Add(hdr, val)
+						}
+					}
+				}
+
+				// Send the message
+				if err := a.manager.PushMessage(msg); err != nil {
+					a.log.Printf("error sending to channel %s: %v", channel.Channel, err)
+				}
+			}
 		} else {
-			// Default to email
-			messengers = []string{"email"}
-		}
+			// LEGACY: Use existing messenger logic (backward compatibility)
+			messengers := []string{}
+			if len(m.Messengers) > 0 {
+				messengers = m.Messengers
+			} else if m.Messenger != "" {
+				messengers = []string{m.Messenger}
+			} else {
+				messengers = []string{"email"}
+			}
 
-		// Send to all specified messengers
-		for _, messenger := range messengers {
+			// Send to all specified messengers
+			for _, messenger := range messengers {
 			// Prepare the final message for this messenger
 			msg := models.Message{}
 			msg.Subscriber = sub
@@ -162,6 +226,7 @@ func (a *App) SendTxMessage(c echo.Context) error {
 				a.log.Printf("error sending message to %s (%s): %v", messenger, msg.Subject, err)
 				// Continue with other messengers instead of failing completely
 			}
+		}
 		}
 	}
 
