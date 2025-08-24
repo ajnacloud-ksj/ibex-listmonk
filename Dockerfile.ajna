@@ -1,62 +1,96 @@
-# Ajna Enhanced Listmonk Dockerfile
-# Multi-stage build for enhanced Listmonk with multi-channel support
+# Ajna Enhanced Listmonk Dockerfile - COMPLETE BUILD
+# Uses the proper Makefile build process including frontend and stuffbin
 
-# Stage 1: Build the enhanced Listmonk binary
-FROM golang:1.23-alpine AS builder
+# Stage 1: Frontend Builder (Node.js)
+FROM node:18-alpine AS frontend-builder
 
-# Install build dependencies
-RUN apk --no-cache add ca-certificates tzdata git make build-base
+# Yarn is already installed in node:18-alpine
+
+# Set working directory
+WORKDIR /src
+
+# Copy package files for caching
+COPY frontend/package.json frontend/yarn.lock ./frontend/
+COPY frontend/email-builder/package.json frontend/email-builder/yarn.lock ./frontend/email-builder/
+
+# Install dependencies
+RUN cd frontend && yarn install
+RUN cd frontend/email-builder && yarn install
+
+# Copy all frontend source
+COPY frontend/ ./frontend/
+
+# Build email-builder first
+RUN cd frontend/email-builder && yarn build
+
+# Copy email-builder dist to the correct location
+RUN mkdir -p frontend/public/static/email-builder
+RUN cp -r frontend/email-builder/dist/* frontend/public/static/email-builder/
+
+# Build main frontend
+RUN cd frontend && yarn build
+
+# Stage 2: Go Builder with Make
+FROM golang:1.23-alpine AS go-builder
+
+# Install all build dependencies including make, yarn, and stuffbin
+RUN apk --no-cache add ca-certificates tzdata git make build-base nodejs npm
+RUN npm install -g yarn
+RUN go install github.com/knadh/stuffbin/...
 
 # Set working directory
 WORKDIR /src
 
 # Copy go.mod and go.sum first for better caching
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy source code
+# Copy all source code
 COPY . .
 
-# Update dependencies and build the enhanced Listmonk binary
-RUN go mod tidy
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
-    -ldflags="-s -w" \
-    -o listmonk cmd/*.go
+# Copy frontend build from previous stage
+COPY --from=frontend-builder /src/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /src/frontend/public/static/email-builder ./frontend/public/static/email-builder
 
-# Stage 2: Create the runtime image
+# Build using the Makefile dist target (builds backend + bundles with stuffbin)
+ENV GOPATH=/go
+ENV STUFFBIN=/go/bin/stuffbin
+RUN make build
+RUN make pack-bin
+
+# Stage 3: Runtime image
 FROM alpine:latest
 
 # Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata shadow su-exec
+RUN apk --no-cache add ca-certificates tzdata wget
 
-# Create listmonk user
+# Create listmonk user and group
 RUN addgroup -S listmonk && adduser -S listmonk -G listmonk
 
-# Set the working directory
+# Set working directory
 WORKDIR /listmonk
 
-# Copy the enhanced binary from builder stage
-COPY --from=builder /src/listmonk .
+# Copy the enhanced binary with all embedded assets from builder stage
+COPY --from=go-builder /src/listmonk .
 
-# Copy configuration template
-COPY config.toml.sample config.toml
+# Make binary executable
+RUN chmod +x ./listmonk
 
-# Copy the entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-
-# Make the entrypoint script executable
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Create uploads directory
+RUN mkdir -p uploads
 
 # Change ownership to listmonk user
 RUN chown -R listmonk:listmonk /listmonk
 
+# Switch to listmonk user
+USER listmonk
+
 # Expose the application port
 EXPOSE 9000
 
-# Set the entrypoint
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9000/health || exit 1
 
 # Define the command to run the application
 CMD ["./listmonk"]
