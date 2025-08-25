@@ -13,6 +13,9 @@ WORKDIR /src
 COPY frontend/package.json frontend/yarn.lock ./frontend/
 COPY frontend/email-builder/package.json frontend/email-builder/yarn.lock ./frontend/email-builder/
 
+# Create the directory structure needed for postinstall script
+RUN mkdir -p static/public/static
+
 # Install dependencies
 RUN cd frontend && yarn install
 RUN cd frontend/email-builder && yarn install
@@ -33,7 +36,7 @@ RUN cd frontend && yarn build
 # Stage 2: Go Builder with Make
 FROM golang:1.23-alpine AS go-builder
 
-# Install all build dependencies including make, yarn, and stuffbin
+# Install all build dependencies including make, yarn, and stuffbin  
 RUN apk --no-cache add ca-certificates tzdata git make build-base nodejs npm
 RUN npm install -g yarn
 RUN go install github.com/knadh/stuffbin/...
@@ -51,6 +54,9 @@ COPY . .
 # Copy frontend build from previous stage
 COPY --from=frontend-builder /src/frontend/dist ./frontend/dist
 COPY --from=frontend-builder /src/frontend/public/static/email-builder ./frontend/public/static/email-builder
+
+# Tidy go.mod to ensure dependencies are correct
+RUN go mod tidy
 
 # Build using the Makefile dist target (builds backend + bundles with stuffbin)
 ENV GOPATH=/go

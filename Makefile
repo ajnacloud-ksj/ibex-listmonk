@@ -1,8 +1,8 @@
 # Try to get the commit hash from 1) git 2) the VERSION file 3) fallback.
-LAST_COMMIT := $(or $(shell git rev-parse --short HEAD 2> /dev/null),$(shell head -n 1 VERSION | grep -oP -m 1 "^[a-z0-9]+$$"),"")
+LAST_COMMIT := $(or $(shell git rev-parse --short HEAD 2> /dev/null),$(shell head -n 1 VERSION | grep -o "^[a-z0-9]*" | head -1),"")
 
 # Try to get the semver from 1) git 2) the VERSION file 3) fallback.
-VERSION := $(or $(LISTMONK_VERSION),$(shell git describe --tags --abbrev=0 2> /dev/null),$(shell grep -oP 'tag: \Kv\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?' VERSION),"v0.0.0")
+VERSION := $(or $(LISTMONK_VERSION),$(shell git describe --tags --abbrev=0 2> /dev/null),$(shell grep -o "v[0-9]*\.[0-9]*\.[0-9]*" VERSION | head -1),"v0.0.0")
 
 BUILDSTR := ${VERSION} (\#${LAST_COMMIT} $(shell date -u +"%Y-%m-%dT%H:%M:%S%z"))
 
