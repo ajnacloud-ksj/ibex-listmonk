@@ -362,6 +362,9 @@ type Message struct {
 
 	// Messenger is the messenger backend to use: email|postback.
 	Messenger string
+
+	// Data contains custom template data for PayloadTemplate rendering
+	Data map[string]any
 }
 
 // Attachment represents a file or blob attachment that can be
@@ -372,21 +375,34 @@ type Attachment struct {
 	Content []byte
 }
 
+// TxChannel represents a channel configuration for multi-channel sending
+type TxChannel struct {
+	Channel    string `json:"channel"`           // "email", "slack", "teams", etc.
+	TemplateID int    `json:"template_id"`       // Template ID for this channel
+	Content    string `json:"content,omitempty"` // Optional content override
+}
+
 // TxMessage represents an e-mail campaign.
 type TxMessage struct {
 	SubscriberEmails []string `json:"subscriber_emails"`
 	SubscriberIDs    []int    `json:"subscriber_ids"`
+	ListIDs          []int    `json:"list_ids,omitempty"`   // Send to entire lists by ID
+	ListNames        []string `json:"list_names,omitempty"` // Send to entire lists by name
 
 	// Deprecated.
 	SubscriberEmail string `json:"subscriber_email"`
 	SubscriberID    int    `json:"subscriber_id"`
 
-	TemplateID  int            `json:"template_id"`
+	TemplateID  int            `json:"template_id"` // Backward compatibility
 	Data        map[string]any `json:"data"`
 	FromEmail   string         `json:"from_email"`
 	Headers     Headers        `json:"headers"`
 	ContentType string         `json:"content_type"`
-	Messenger   string         `json:"messenger"`
+	Messenger   string         `json:"messenger"` // Backward compatibility
+	// Messengers allows sending to multiple channels in a single API call (deprecated)
+	Messengers []string `json:"messengers,omitempty"`
+	// Channels is the new flexible multi-channel configuration
+	Channels []TxChannel `json:"channels,omitempty"`
 
 	// File attachments added from multi-part form data.
 	Attachments []Attachment `json:"-"`

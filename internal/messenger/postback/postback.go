@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/textproto"
 	"time"
@@ -67,6 +68,7 @@ type Postback struct {
 
 // New returns a new instance of the HTTP Postback messenger.
 func New(o Options) (*Postback, error) {
+
 	authStr := ""
 	if o.Username != "" && o.Password != "" {
 		authStr = fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString(
@@ -95,6 +97,25 @@ func (p *Postback) Name() string {
 
 // Push pushes a message to the server.
 func (p *Postback) Push(m models.Message) error {
+	// If message body looks like JSON, use it directly (like email templates)
+	if len(m.Body) > 0 && (m.Body[0] == '{' || m.Body[0] == '[') {
+		log.Printf("DEBUG PUSH: Using rendered template body as JSON for %s", p.o.Name)
+		return p.pushDirectJSON(m)
+	}
+
+	// Default behavior: use standard JSON payload for backwards compatibility
+	log.Printf("DEBUG PUSH: Using default JSON for %s", p.o.Name)
+	return p.pushDefault(m)
+}
+
+// pushDirectJSON sends the rendered template body directly as JSON (like email templates)
+func (p *Postback) pushDirectJSON(m models.Message) error {
+	// Use the rendered template body directly as the webhook payload
+	return p.exec(http.MethodPost, p.o.RootURL, m.Body, nil)
+}
+
+// pushDefault sends the standard JSON payload (backward compatibility)
+func (p *Postback) pushDefault(m models.Message) error {
 	pb := postback{
 		Subject:     m.Subject,
 		FromEmail:   m.From,

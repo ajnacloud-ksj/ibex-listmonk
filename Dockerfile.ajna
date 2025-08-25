@@ -1,0 +1,102 @@
+# Ajna Enhanced Listmonk Dockerfile - COMPLETE BUILD
+# Uses the proper Makefile build process including frontend and stuffbin
+
+# Stage 1: Frontend Builder (Node.js)
+FROM node:18-alpine AS frontend-builder
+
+# Yarn is already installed in node:18-alpine
+
+# Set working directory
+WORKDIR /src
+
+# Copy package files for caching
+COPY frontend/package.json frontend/yarn.lock ./frontend/
+COPY frontend/email-builder/package.json frontend/email-builder/yarn.lock ./frontend/email-builder/
+
+# Create the directory structure needed for postinstall script
+RUN mkdir -p static/public/static
+
+# Install dependencies
+RUN cd frontend && yarn install
+RUN cd frontend/email-builder && yarn install
+
+# Copy all frontend source
+COPY frontend/ ./frontend/
+
+# Build email-builder first
+RUN cd frontend/email-builder && yarn build
+
+# Copy email-builder dist to the correct location
+RUN mkdir -p frontend/public/static/email-builder
+RUN cp -r frontend/email-builder/dist/* frontend/public/static/email-builder/
+
+# Build main frontend
+RUN cd frontend && yarn build
+
+# Stage 2: Go Builder with Make
+FROM golang:1.23-alpine AS go-builder
+
+# Install all build dependencies including make, yarn, and stuffbin  
+RUN apk --no-cache add ca-certificates tzdata git make build-base nodejs npm
+RUN npm install -g yarn
+RUN go install github.com/knadh/stuffbin/...
+
+# Set working directory
+WORKDIR /src
+
+# Copy go.mod and go.sum first for better caching
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy all source code
+COPY . .
+
+# Copy frontend build from previous stage
+COPY --from=frontend-builder /src/frontend/dist ./frontend/dist
+COPY --from=frontend-builder /src/frontend/public/static/email-builder ./frontend/public/static/email-builder
+
+# Tidy go.mod to ensure dependencies are correct
+RUN go mod tidy
+
+# Build using the Makefile dist target (builds backend + bundles with stuffbin)
+ENV GOPATH=/go
+ENV STUFFBIN=/go/bin/stuffbin
+RUN make build
+RUN make pack-bin
+
+# Stage 3: Runtime image
+FROM alpine:latest
+
+# Install runtime dependencies
+RUN apk --no-cache add ca-certificates tzdata wget
+
+# Create listmonk user and group
+RUN addgroup -S listmonk && adduser -S listmonk -G listmonk
+
+# Set working directory
+WORKDIR /listmonk
+
+# Copy the enhanced binary with all embedded assets from builder stage
+COPY --from=go-builder /src/listmonk .
+
+# Make binary executable
+RUN chmod +x ./listmonk
+
+# Create uploads directory
+RUN mkdir -p uploads
+
+# Change ownership to listmonk user
+RUN chown -R listmonk:listmonk /listmonk
+
+# Switch to listmonk user
+USER listmonk
+
+# Expose the application port
+EXPOSE 9000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9000/health || exit 1
+
+# Define the command to run the application
+CMD ["./listmonk"]
