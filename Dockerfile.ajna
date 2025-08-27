@@ -67,8 +67,8 @@ RUN make pack-bin
 # Stage 3: Runtime image
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates tzdata wget
+# Install runtime dependencies including PostgreSQL client for initialization
+RUN apk --no-cache add ca-certificates tzdata wget postgresql-client bash
 
 # Create listmonk user and group
 RUN addgroup -S listmonk && adduser -S listmonk -G listmonk
@@ -82,14 +82,14 @@ COPY --from=go-builder /src/listmonk .
 # Make binary executable
 RUN chmod +x ./listmonk
 
-# Create uploads directory
-RUN mkdir -p uploads
+# Create uploads and scripts directories
+RUN mkdir -p uploads /scripts
 
 # Change ownership to listmonk user
 RUN chown -R listmonk:listmonk /listmonk
 
-# Switch to listmonk user
-USER listmonk
+# Make sure scripts directory is accessible (we'll run as root for init script)
+# USER listmonk
 
 # Expose the application port
 EXPOSE 9000
