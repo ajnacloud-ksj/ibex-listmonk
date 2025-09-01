@@ -84,6 +84,8 @@ RUN chmod +x ./listmonk
 
 # Create uploads and scripts directories
 RUN mkdir -p uploads /scripts
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*
 
 # Change ownership to listmonk user
 RUN chown -R listmonk:listmonk /listmonk
