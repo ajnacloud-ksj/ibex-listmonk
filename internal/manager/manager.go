@@ -527,8 +527,13 @@ func (m *Manager) worker() {
 			}
 
 			// Push the message to the messenger.
-			if err := m.messengers[msg.Messenger].Push(msg); err != nil {
-				m.log.Printf("error sending message '%s': %v", msg.Subject, err)
+			// Check if messenger exists before accessing it (fix for broadcast messages)
+			if messenger, exists := m.messengers[msg.Messenger]; exists {
+				if err := messenger.Push(msg); err != nil {
+					m.log.Printf("error sending message '%s': %v", msg.Subject, err)
+				}
+			} else {
+				m.log.Printf("warning: messenger '%s' not found for message '%s', skipping", msg.Messenger, msg.Subject)
 			}
 		}
 	}
