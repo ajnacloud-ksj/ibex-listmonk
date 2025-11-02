@@ -1075,6 +1075,7 @@ func initAuth(co *core.Core, db *sql.DB, ko *koanf.Koanf) (bool, *auth.Auth) {
 			HasPassword:   true,
 			Status:        auth.UserStatusEnabled,
 			Type:          auth.UserTypeAPI,
+			UserRoleID:    auth.SuperAdminRoleID, // Fix: Set UserRoleID for GetPermittedLists
 		}
 		u.UserRole.ID = auth.SuperAdminRoleID
 		a.CacheAPIUser(u)

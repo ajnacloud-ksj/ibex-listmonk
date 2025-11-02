@@ -168,7 +168,7 @@ func (c *Core) setupUserFields(users []auth.User) []auth.User {
 		u.UserRole.ID = u.UserRoleID
 		u.UserRole.Name = u.UserRoleName
 		u.UserRole.Permissions = u.UserRolePerms
-		u.UserRoleID = 0
+		// Keep u.UserRoleID for GetPermittedLists() Super Admin check
 
 		// Prepare lookup maps.
 		u.ListPermissionsMap = make(map[int]map[string]struct{})

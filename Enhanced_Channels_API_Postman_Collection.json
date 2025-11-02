@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Enhanced Listmonk Channels API",
-    "description": "Complete collection for testing the enhanced multi-channel listmonk API with per-channel templates",
+    "description": "Complete collection for testing the enhanced multi-channel listmonk API with per-channel templates. Includes template creation and data alert examples.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -14,7 +14,7 @@
       },
       {
         "key": "password",
-        "value": "Fzlc4TcxMwcyROuBVmsC90dIL8d3yo9H",
+        "value": "pYh9XXkvTQuYP1kDT93y11tasHphuDze",
         "type": "string"
       }
     ]
@@ -31,9 +31,168 @@
     {
       "key": "slack_template_id",
       "value": "6"
+    },
+    {
+      "key": "subscriber_email",
+      "value": "sbpraonalla@gmail.com"
     }
   ],
   "item": [
+    {
+      "name": "🏗️ Template Management",
+      "item": [
+        {
+          "name": "📧 Create Email Data Alert Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Data Alert Email\",\n  \"type\": \"tx\",\n  \"subject\": \"🚨 {{ .Tx.Data.alert_type | default \\\"Data Alert\\\" }} - {{ .Tx.Data.severity | default \\\"MEDIUM\\\" }}\",\n  \"body\": \"<!doctype html>\\n<html>\\n    <head>\\n        <meta http-equiv=\\\"Content-Type\\\" content=\\\"text/html; charset=utf-8\\\">\\n        <meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1, minimum-scale=1\\\">\\n        <base target=\\\"_blank\\\">\\n        <style>\\n            body { background-color: #F0F1F3; font-family: 'Helvetica Neue', 'Segoe UI', Helvetica, sans-serif; font-size: 15px; line-height: 26px; margin: 0; color: #444; }\\n            .wrap { background-color: #fff; padding: 30px; max-width: 600px; margin: 0 auto; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\\n            .alert-header { background: linear-gradient(135deg, #ff4757, #ff3838); color: white; padding: 20px; border-radius: 8px 8px 0 0; margin: -30px -30px 20px -30px; text-align: center; }\\n            .alert-header.warning { background: linear-gradient(135deg, #ffa502, #ff6348); }\\n            .alert-header.info { background: linear-gradient(135deg, #3742fa, #2f3542); }\\n            .alert-header h1 { margin: 0; font-size: 24px; font-weight: bold; }\\n            .alert-meta { background: #f8f9fa; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #ff4757; }\\n            .alert-meta.warning { border-left-color: #ffa502; }\\n            .alert-meta.info { border-left-color: #3742fa; }\\n            .metric-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #e1e5e9; }\\n            .metric-row:last-child { border-bottom: none; }\\n            .metric-label { font-weight: 600; color: #2c3e50; }\\n            .metric-value { font-family: 'Monaco', 'Consolas', monospace; background: #ecf0f1; padding: 4px 8px; border-radius: 4px; font-size: 14px; }\\n            .metric-value.critical { background: #fee; color: #c0392b; font-weight: bold; }\\n            .button { background: #0055d4; border-radius: 6px; text-decoration: none !important; color: #fff !important; font-weight: bold; padding: 12px 24px; display: inline-block; margin: 20px 0; }\\n            .footer { text-align: center; font-size: 12px; color: #888; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e1e5e9; }\\n            .gutter { padding: 30px; }\\n            .timestamp { font-size: 13px; color: #7f8c8d; text-align: center; margin-top: 15px; }\\n        </style>\\n    </head>\\n<body>\\n    <div class=\\\"gutter\\\">&nbsp;</div>\\n    <div class=\\\"wrap\\\">\\n        <div class=\\\"alert-header {{ if eq .Tx.Data.severity \\\"CRITICAL\\\" }}critical{{ else if eq .Tx.Data.severity \\\"WARNING\\\" }}warning{{ else }}info{{ end }}\\\">\\n            <h1>🚨 {{ .Tx.Data.alert_type | default \\\"Data Alert\\\" }}</h1>\\n        </div>\\n        <div class=\\\"alert-meta {{ if eq .Tx.Data.severity \\\"CRITICAL\\\" }}critical{{ else if eq .Tx.Data.severity \\\"WARNING\\\" }}warning{{ else }}info{{ end }}\\\">\\n            <div class=\\\"metric-row\\\">\\n                <span class=\\\"metric-label\\\">Alert Type:</span>\\n                <span class=\\\"metric-value\\\">{{ .Tx.Data.alert_type | default \\\"Data Quality Alert\\\" }}</span>\\n            </div>\\n            <div class=\\\"metric-row\\\">\\n                <span class=\\\"metric-label\\\">Severity:</span>\\n                <span class=\\\"metric-value {{ if eq .Tx.Data.severity \\\"CRITICAL\\\" }}critical{{ end }}\\\">{{ .Tx.Data.severity | default \\\"MEDIUM\\\" }}</span>\\n            </div>\\n            {{ if .Tx.Data.metric_name }}\\n            <div class=\\\"metric-row\\\">\\n                <span class=\\\"metric-label\\\">Metric:</span>\\n                <span class=\\\"metric-value\\\">{{ .Tx.Data.metric_name }}</span>\\n            </div>\\n            {{ end }}\\n            {{ if .Tx.Data.current_value }}\\n            <div class=\\\"metric-row\\\">\\n                <span class=\\\"metric-label\\\">Current Value:</span>\\n                <span class=\\\"metric-value {{ if eq .Tx.Data.severity \\\"CRITICAL\\\" }}critical{{ end }}\\\">{{ .Tx.Data.current_value }}</span>\\n            </div>\\n            {{ end }}\\n        </div>\\n        {{ if .Tx.Data.description }}\\n        <div style=\\\"background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin: 20px 0;\\\">\\n            <h3 style=\\\"margin: 0 0 10px 0; color: #856404;\\\">📋 Description</h3>\\n            <p style=\\\"margin: 0; color: #856404;\\\">{{ .Tx.Data.description }}</p>\\n        </div>\\n        {{ end }}\\n        {{ if .Tx.Data.dashboard_url }}\\n        <div style=\\\"text-align: center; margin: 25px 0;\\\">\\n            <a href=\\\"{{ .Tx.Data.dashboard_url }}\\\" class=\\\"button\\\">View Dashboard</a>\\n        </div>\\n        {{ end }}\\n        <div class=\\\"timestamp\\\">\\n            Alert triggered: {{ .Tx.Data.timestamp | default \\\"now\\\" }}\\n        </div>\\n        <div class=\\\"footer\\\">\\n            <p>This is an automated data alert from <strong>Ajna Data Pipeline</strong><br>User: <strong>ajna</strong> | Alert ID: {{ .Tx.Data.alert_id | default \\\"auto-generated\\\" }}</p>\\n        </div>\\n    </div>\\n</body>\\n</html>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates"]
+            },
+            "description": "Create the email template for data alerts with rich HTML formatting"
+          }
+        },
+        {
+          "name": "💬 Create Slack Data Alert Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Data Alert Slack\",\n  \"type\": \"tx\",\n  \"subject\": \"{{ .Tx.Data.alert_type | default \\\"Data Alert\\\" }} - {{ .Tx.Data.severity | default \\\"MEDIUM\\\" }}\",\n  \"body\": \"{\\n  \\\"text\\\": \\\"🚨 {{ .Tx.Data.alert_type | default \\\"Data Alert\\\" }} - {{ .Tx.Data.severity | default \\\"MEDIUM\\\" }}\\\",\\n  \\\"blocks\\\": [\\n    {\\n      \\\"type\\\": \\\"header\\\",\\n      \\\"text\\\": {\\n        \\\"type\\\": \\\"plain_text\\\",\\n        \\\"text\\\": \\\"🚨 {{ .Tx.Data.alert_type | default \\\"Data Alert\\\" }}\\\"\\n      }\\n    },\\n    {\\n      \\\"type\\\": \\\"section\\\",\\n      \\\"fields\\\": [\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*Severity:*\\\\n{{ if eq .Tx.Data.severity \\\"CRITICAL\\\" }}🔴{{ else if eq .Tx.Data.severity \\\"WARNING\\\" }}🟡{{ else }}🔵{{ end }} {{ .Tx.Data.severity | default \\\"MEDIUM\\\" }}\\\"\\n        },\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*User:*\\\\najna\\\"\\n        }{{ if .Tx.Data.metric_name }},\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*Metric:*\\\\n{{ .Tx.Data.metric_name }}\\\"\\n        }{{ end }}{{ if .Tx.Data.current_value }},\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*Current Value:*\\\\n`{{ .Tx.Data.current_value }}`\\\"\\n        }{{ end }}{{ if .Tx.Data.threshold }},\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*Threshold:*\\\\n`{{ .Tx.Data.threshold }}`\\\"\\n        }{{ end }}{{ if .Tx.Data.affected_records }},\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"*Affected Records:*\\\\n{{ .Tx.Data.affected_records }}\\\"\\n        }{{ end }}\\n      ]\\n    }{{ if .Tx.Data.description }},\\n    {\\n      \\\"type\\\": \\\"section\\\",\\n      \\\"text\\\": {\\n        \\\"type\\\": \\\"mrkdwn\\\",\\n        \\\"text\\\": \\\"*📋 Description:*\\\\n{{ .Tx.Data.description }}\\\"\\n      }\\n    }{{ end }}{{ if .Tx.Data.dashboard_url }},\\n    {\\n      \\\"type\\\": \\\"actions\\\",\\n      \\\"elements\\\": [\\n        {\\n          \\\"type\\\": \\\"button\\\",\\n          \\\"text\\\": {\\n            \\\"type\\\": \\\"plain_text\\\",\\n            \\\"text\\\": \\\"View Dashboard\\\"\\n          },\\n          \\\"style\\\": \\\"primary\\\",\\n          \\\"url\\\": \\\"{{ .Tx.Data.dashboard_url }}\\\"\\n        }\\n      ]\\n    }{{ end }},\\n    {\\n      \\\"type\\\": \\\"context\\\",\\n      \\\"elements\\\": [\\n        {\\n          \\\"type\\\": \\\"mrkdwn\\\",\\n          \\\"text\\\": \\\"⏰ {{ .Tx.Data.timestamp | default \\\"now\\\" }} | Alert ID: {{ .Tx.Data.alert_id | default \\\"auto-generated\\\" }} | Ajna Data Pipeline\\\"\\n        }\\n      ]\\n    }\\n  ]\\n}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/templates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates"]
+            },
+            "description": "Create the Slack template for data alerts with Block Kit formatting"
+          }
+        },
+        {
+          "name": "📋 List All Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/templates",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "templates"]
+            },
+            "description": "List all templates to verify creation and get IDs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚨 Data Alert Examples",
+      "item": [
+        {
+          "name": "📧 Critical Data Quality Alert (Email)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"Critical Data Quality Issue\",\n    \"severity\": \"CRITICAL\",\n    \"metric_name\": \"data.completeness.percentage\",\n    \"current_value\": \"65.2%\",\n    \"threshold\": \"95%\",\n    \"affected_records\": 12847,\n    \"dataset\": \"customer_transactions\",\n    \"description\": \"Data completeness has dropped significantly below acceptable thresholds. Multiple required fields are showing high null rates.\",\n    \"recommended_action\": \"Check data ingestion pipeline and validate source system connectivity\",\n    \"dashboard_url\": \"https://dashboard.company.com/data-quality\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"alert_id\": \"DQ-{{$randomInt}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tx"]
+            },
+            "description": "Send critical data quality alert via email with rich formatting"
+          }
+        },
+        {
+          "name": "💬 Memory Usage Warning (Slack)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"template_id\": {{slack_template_id}},\n  \"messenger\": \"slack-notifications\",\n  \"data\": {\n    \"alert_type\": \"Memory Usage Alert\",\n    \"severity\": \"WARNING\",\n    \"metric_name\": \"system.memory.usage\",\n    \"current_value\": \"87.3%\",\n    \"threshold\": \"85%\",\n    \"description\": \"Memory usage on production servers is approaching critical levels.\",\n    \"recommended_action\": \"Scale horizontally or investigate memory leaks\",\n    \"dashboard_url\": \"https://monitoring.company.com/memory\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"alert_id\": \"MEM-{{$randomInt}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tx"]
+            },
+            "description": "Send memory usage warning to Slack with Block Kit formatting"
+          }
+        },
+        {
+          "name": "🚀 Multi-Channel Database Alert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"messengers\": [\"email\", \"slack-notifications\"],\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"Database Connection Failure\",\n    \"severity\": \"CRITICAL\",\n    \"metric_name\": \"database.connection.status\",\n    \"current_value\": \"FAILED\",\n    \"threshold\": \"CONNECTED\",\n    \"affected_records\": 0,\n    \"dataset\": \"production_database\",\n    \"description\": \"Primary database connection has failed. All write operations are currently blocked.\",\n    \"recommended_action\": \"1. Check database server status\\n2. Verify network connectivity\\n3. Restart database service if needed\\n4. Activate failover procedures\",\n    \"dashboard_url\": \"https://monitoring.company.com/database\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"alert_id\": \"DB-{{$randomInt}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tx"]
+            },
+            "description": "Send critical database alert to both email and Slack simultaneously"
+          }
+        },
+        {
+          "name": "💾 Disk Space Info Alert (Slack)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"template_id\": {{slack_template_id}},\n  \"messenger\": \"slack-notifications\",\n  \"data\": {\n    \"alert_type\": \"Disk Space Notification\",\n    \"severity\": \"INFO\",\n    \"metric_name\": \"disk.usage.percentage\",\n    \"current_value\": \"72%\",\n    \"threshold\": \"80%\",\n    \"description\": \"Disk usage is within normal ranges but trending upward.\",\n    \"recommended_action\": \"Monitor usage trends and plan for cleanup if needed\",\n    \"dashboard_url\": \"https://monitoring.company.com/storage\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"alert_id\": \"DISK-{{$randomInt}}\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tx"]
+            },
+            "description": "Send informational disk space alert to Slack"
+          }
+        }
+      ]
+    },
     {
       "name": "📧 Single Email Channel",
       "request": {
@@ -46,14 +205,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"HIGH_CPU_USAGE\",\n    \"severity\": \"WARNING\",\n    \"description\": \"CPU usage exceeded 85% threshold for 5 minutes\",\n    \"metric_name\": \"cpu.usage.percent\",\n    \"current_value\": \"87.5%\",\n    \"threshold\": \"85%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    }\n  ]\n}"
+          "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"HIGH_CPU_USAGE\",\n    \"severity\": \"WARNING\",\n    \"description\": \"CPU usage exceeded 85% threshold for 5 minutes\",\n    \"metric_name\": \"cpu.usage.percent\",\n    \"current_value\": \"87.5%\",\n    \"threshold\": \"85%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/tx",
           "host": ["{{baseUrl}}"],
           "path": ["api", "tx"]
         },
-        "description": "Send data alert to email only using the enhanced channels API"
+        "description": "Send data alert to email only using the TX API"
       }
     },
     {
@@ -68,14 +227,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"MEMORY_LOW\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Available memory dropped below 10%\",\n    \"metric_name\": \"memory.available.percent\",\n    \"current_value\": \"8.2%\",\n    \"threshold\": \"10%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+          "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"template_id\": {{slack_template_id}},\n  \"messenger\": \"slack-notifications\",\n  \"data\": {\n    \"alert_type\": \"MEMORY_LOW\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Available memory dropped below 10%\",\n    \"metric_name\": \"memory.available.percent\",\n    \"current_value\": \"8.2%\",\n    \"threshold\": \"10%\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/tx",
           "host": ["{{baseUrl}}"],
           "path": ["api", "tx"]
         },
-        "description": "Send data alert to Slack only using the enhanced channels API"
+        "description": "Send data alert to Slack only using the TX API"
       }
     },
     {
@@ -90,190 +249,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"DISK_FULL\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Disk usage reached 95% on production server\",\n    \"metric_name\": \"disk.usage.percent\",\n    \"current_value\": \"95.8%\",\n    \"threshold\": \"90%\",\n    \"affected_systems\": [\"web-server-01\", \"api-server-02\"],\n    \"dashboard_url\": \"https://monitoring.company.com/disk-alerts\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
+          "raw": "{\n  \"subscriber_emails\": [\"{{subscriber_email}}\"],\n  \"messengers\": [\"email\", \"slack-notifications\"],\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"DISK_FULL\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Disk usage reached 95% on production server\",\n    \"metric_name\": \"disk.usage.percent\",\n    \"current_value\": \"95.8%\",\n    \"threshold\": \"90%\",\n    \"affected_systems\": [\"web-server-01\", \"api-server-02\"],\n    \"dashboard_url\": \"https://monitoring.company.com/disk-alerts\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/api/tx",
           "host": ["{{baseUrl}}"],
           "path": ["api", "tx"]
         },
-        "description": "Send data alert to BOTH email and Slack simultaneously with different templates"
-      }
-    },
-    {
-      "name": "👥 Multiple Subscriber Emails",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"subscriber_emails\": [\n    \"admin@company.com\",\n    \"devops@company.com\",\n    \"your-email@example.com\"\n  ],\n  \"data\": {\n    \"alert_type\": \"DATABASE_CONNECTION_FAILURE\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Multiple database connection failures detected\",\n    \"affected_services\": [\"user-service\", \"payment-service\"],\n    \"error_count\": 47,\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Send alerts to multiple subscriber emails simultaneously"
-      }
-    },
-    {
-      "name": "🆔 Subscriber IDs",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"subscriber_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"API_RATE_LIMIT_EXCEEDED\",\n    \"severity\": \"WARNING\",\n    \"description\": \"API rate limit exceeded for multiple endpoints\",\n    \"affected_endpoints\": [\"/api/users\", \"/api/payments\"],\n    \"rate_limit\": \"1000/hour\",\n    \"current_usage\": \"1247/hour\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Send alerts using subscriber IDs instead of emails"
-      }
-    },
-    {
-      "name": "📋 List Targeting (Broadcast)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"list_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"SYSTEM_MAINTENANCE\",\n    \"severity\": \"INFO\",\n    \"description\": \"Scheduled maintenance window will begin at 2:00 AM UTC\",\n    \"maintenance_duration\": \"2 hours\",\n    \"affected_services\": [\"API\", \"Dashboard\", \"Reports\"],\n    \"maintenance_window\": \"2:00 AM - 4:00 AM UTC\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Send alerts to entire subscriber lists (broadcast to all list members)"
-      }
-    },
-    {
-      "name": "🎨 Custom Content Override",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"data\": {\n    \"alert_type\": \"CUSTOM_CONTENT_TEST\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing custom content override feature\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}},\n      \"content\": \"{\\\"text\\\": \\\"🔧 Custom Override: CUSTOM_CONTENT_TEST\\\", \\\"blocks\\\": [{\\\"type\\\": \\\"section\\\", \\\"text\\\": {\\\"type\\\": \\\"mrkdwn\\\", \\\"text\\\": \\\"*Custom Alert*\\\\nThis message uses content override instead of template!\\\\n\\\\n*Alert:* CUSTOM_CONTENT_TEST\\\\n*Time:* {{$isoTimestamp}}\\\"}}]}\"\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Use custom content override for specific channels instead of template"
-      }
-    },
-    {
-      "name": "🔄 Backward Compatibility Test",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"subscriber_email\": \"your-email@example.com\",\n  \"template_id\": {{email_template_id}},\n  \"data\": {\n    \"alert_type\": \"LEGACY_API_TEST\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing backward compatibility with legacy API format\",\n    \"timestamp\": \"{{$isoTimestamp}}\"\n  }\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Test that legacy API still works (backward compatibility)"
-      }
-    },
-    {
-      "name": "📊 Performance Monitoring Alert",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"subscriber_emails\": [\n    \"devops@company.com\",\n    \"sre@company.com\"\n  ],\n  \"data\": {\n    \"alert_type\": \"RESPONSE_TIME_HIGH\",\n    \"severity\": \"WARNING\",\n    \"description\": \"API response time exceeded acceptable thresholds\",\n    \"metric_name\": \"api.response_time.p95\",\n    \"current_value\": \"2.4s\",\n    \"threshold\": \"2.0s\",\n    \"affected_endpoints\": [\"/api/search\", \"/api/recommendations\"],\n    \"sample_count\": 1000,\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"dashboard_url\": \"https://monitoring.company.com/performance\",\n    \"runbook_url\": \"https://docs.company.com/runbooks/high-latency\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Real-world example: Performance monitoring alert with rich data"
-      }
-    },
-    {
-      "name": "📋 List Names (Broadcast by Name)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"list_names\": [\"Data Anomaly\"],\n  \"data\": {\n    \"alert_type\": \"SYSTEM_MAINTENANCE_BY_NAME\",\n    \"severity\": \"INFO\",\n    \"description\": \"Testing broadcast to list using list name instead of ID\",\n    \"maintenance_duration\": \"2 hours\",\n    \"affected_services\": [\"API\", \"Dashboard\", \"Reports\"],\n    \"maintenance_window\": \"2:00 AM - 4:00 AM UTC\",\n    \"timestamp\": \"{{current_timestamp}}\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Send alerts to entire subscriber lists using list names instead of IDs (more user-friendly)"
-      }
-    },
-    {
-      "name": "🔥 Data Quality Alert",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"list_ids\": [3],\n  \"data\": {\n    \"alert_type\": \"DATA_QUALITY_ISSUE\",\n    \"severity\": \"CRITICAL\",\n    \"description\": \"Data quality check failed for customer dataset\",\n    \"dataset_name\": \"customer_profiles\",\n    \"affected_records\": 1247,\n    \"total_records\": 50000,\n    \"quality_score\": \"67%\",\n    \"threshold\": \"85%\",\n    \"failed_checks\": [\"email_format\", \"phone_validation\", \"address_completeness\"],\n    \"data_source\": \"CRM_SYNC_JOB_2025_08_24\",\n    \"timestamp\": \"{{$isoTimestamp}}\",\n    \"dashboard_url\": \"https://dq.company.com/customer_profiles\"\n  },\n  \"channels\": [\n    {\n      \"channel\": \"email\",\n      \"template_id\": {{email_template_id}}\n    },\n    {\n      \"channel\": \"slack-notifications\",\n      \"template_id\": {{slack_template_id}}\n    }\n  ]\n}"
-        },
-        "url": {
-          "raw": "{{baseUrl}}/api/tx",
-          "host": ["{{baseUrl}}"],
-          "path": ["api", "tx"]
-        },
-        "description": "Real-world example: Data quality alert for data engineering teams"
+        "description": "Send data alert to BOTH email and Slack simultaneously"
       }
     }
   ]

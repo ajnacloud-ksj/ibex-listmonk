@@ -13,6 +13,17 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// isBroadcastMessenger determines if a messenger is a broadcast type (sends once per channel)
+// rather than subscriber-based (sends once per subscriber).
+// In Listmonk architecture:
+// - "email" messenger is subscriber-specific (SMTP)
+// - All postback messengers (webhooks) are broadcast-type
+func isBroadcastMessenger(messengerName string) bool {
+	// Email messenger is always subscriber-specific
+	// All other messengers (postback/webhook) are broadcast-type
+	return messengerName != "email"
+}
+
 // SendTxMessage handles the sending of a transactional message.
 func (a *App) SendTxMessage(c echo.Context) error {
 	var m models.TxMessage
@@ -144,21 +155,92 @@ func (a *App) SendTxMessage(c echo.Context) error {
 		}
 	}
 
-	// Process all subscribers
-	for _, sub := range subscribers {
+	// Enhanced multi-channel support with channels API
+	if len(m.Channels) > 0 {
+		// Separate broadcast channels from subscriber-based channels
+		var broadcastChannels []models.TxChannel
+		var subscriberChannels []models.TxChannel
 
-		// Render the message (skip if using channels API, render per-channel instead)
-		if len(m.Channels) == 0 {
-			if err := m.Render(sub, tpl); err != nil {
-				return echo.NewHTTPError(http.StatusBadRequest,
-					a.i18n.Ts("globals.messages.errorFetching", "name"))
+		for _, channel := range m.Channels {
+			if isBroadcastMessenger(channel.Channel) {
+				broadcastChannels = append(broadcastChannels, channel)
+			} else {
+				subscriberChannels = append(subscriberChannels, channel)
 			}
 		}
 
-		// Enhanced multi-channel support with channels API
-		if len(m.Channels) > 0 {
-			// NEW: Enhanced channels API
-			for _, channel := range m.Channels {
+		// Send broadcast channels ONCE per channel (not per subscriber)
+		for _, channel := range broadcastChannels {
+			// Use first subscriber for template rendering (broadcast doesn't need subscriber-specific data)
+			var renderSub models.Subscriber
+			if len(subscribers) > 0 {
+				renderSub = subscribers[0]
+			} else {
+				// Skip if no subscribers available for template rendering
+				continue
+			}
+
+			// Get template for this specific channel
+			channelTpl, err := a.manager.GetTpl(channel.TemplateID)
+			if err != nil {
+				a.log.Printf("error getting template %d for broadcast channel %s: %v", channel.TemplateID, channel.Channel, err)
+				continue
+			}
+
+			// Create a copy of the message for this channel
+			channelMsg := m
+			if err := channelMsg.Render(renderSub, channelTpl); err != nil {
+				a.log.Printf("error rendering template %d for broadcast channel %s: %v", channel.TemplateID, channel.Channel, err)
+				continue
+			}
+
+			// Prepare the message for this broadcast channel
+			msg := models.Message{
+				Subscriber:  renderSub,
+				To:          []string{renderSub.Email},
+				From:        channelMsg.FromEmail,
+				Subject:     channelMsg.Subject,
+				ContentType: channelMsg.ContentType,
+				Messenger:   channel.Channel,
+				Body:        channelMsg.Body,
+				Data:        channelMsg.Data,
+			}
+
+			// Override content if specified
+			if channel.Content != "" {
+				msg.Body = []byte(channel.Content)
+			}
+
+			// Copy attachments
+			for _, attachment := range channelMsg.Attachments {
+				msg.Attachments = append(msg.Attachments, models.Attachment{
+					Name:    attachment.Name,
+					Header:  attachment.Header,
+					Content: attachment.Content,
+				})
+			}
+
+			// Optional headers
+			if len(channelMsg.Headers) != 0 {
+				msg.Headers = make(textproto.MIMEHeader, len(channelMsg.Headers))
+				for _, set := range channelMsg.Headers {
+					for hdr, val := range set {
+						msg.Headers.Add(hdr, val)
+					}
+				}
+			}
+
+			// Send the broadcast message ONCE
+			if err := a.manager.PushMessage(msg); err != nil {
+				a.log.Printf("error sending to broadcast channel %s: %v", channel.Channel, err)
+			} else {
+				a.log.Printf("successfully sent broadcast message to channel %s", channel.Channel)
+			}
+		}
+
+		// Process subscriber-based channels (email, etc.) - existing per-subscriber logic
+		for _, sub := range subscribers {
+			for _, channel := range subscriberChannels {
 				// Get template for this specific channel
 				channelTpl, err := a.manager.GetTpl(channel.TemplateID)
 				if err != nil {
@@ -214,8 +296,17 @@ func (a *App) SendTxMessage(c echo.Context) error {
 					a.log.Printf("error sending to channel %s: %v", channel.Channel, err)
 				}
 			}
-		} else {
-			// LEGACY: Use existing messenger logic (backward compatibility)
+		}
+	} else {
+		// LEGACY: Use existing messenger logic (backward compatibility)
+		// Process all subscribers with legacy single-channel messaging
+		for _, sub := range subscribers {
+			// Render the message (skip if using channels API, render per-channel instead)
+			if err := m.Render(sub, tpl); err != nil {
+				return echo.NewHTTPError(http.StatusBadRequest,
+					a.i18n.Ts("globals.messages.errorFetching", "name"))
+			}
+
 			messengers := []string{}
 			if len(m.Messengers) > 0 {
 				messengers = m.Messengers
