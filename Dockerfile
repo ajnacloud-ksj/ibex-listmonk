@@ -8,7 +8,17 @@ WORKDIR /listmonk
 
 # Copy only the necessary files
 COPY listmonk .
-COPY config.toml.sample config.toml
+COPY config.toml.sample config.toml.sample
+
+# Copy required static assets (queries, schema, i18n, static)
+COPY queries.sql .
+COPY schema.sql .
+COPY i18n/ ./i18n/
+COPY static/ ./static/
+
+# Copy the scripts directory
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
 
 # Copy the entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
