@@ -11,7 +11,7 @@ jobs:
   build:
     uses: ajnacloud-ksj/ajna-github-workflows/.github/workflows/reusable-docker-build.yml@main
     with:
-      dockerfile_path: './Dockerfile.ajna'
+      dockerfile_path: './Dockerfile'
       context_path: '.'
       enable_auto_tag: true
       enable_latest_tag: true

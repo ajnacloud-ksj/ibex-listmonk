@@ -1,6 +1,6 @@
 module github.com/knadh/listmonk
 
-go 1.21
+go 1.23.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
