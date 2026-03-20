@@ -115,7 +115,9 @@ func (e *Emailer) Push(m models.Message) error {
 		ln  = len(e.servers)
 		srv *Server
 	)
-	if ln > 1 {
+	if ln == 0 {
+		return fmt.Errorf("no SMTP servers configured for messenger '%s'", e.name)
+	} else if ln > 1 {
 		srv = e.servers[rand.Intn(ln)]
 	} else {
 		srv = e.servers[0]
