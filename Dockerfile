@@ -16,9 +16,13 @@ COPY frontend/email-builder/package.json frontend/email-builder/yarn.lock ./fron
 # Create the directory structure needed for postinstall script
 RUN mkdir -p static/public/static
 
+# Increase yarn network timeout to avoid failures on slow connections
+RUN yarn config set network-timeout 600000 && \
+    yarn config set network-concurrency 4
+
 # Install dependencies
-RUN cd frontend && yarn install
-RUN cd frontend/email-builder && yarn install
+RUN cd frontend && yarn install --frozen-lockfile
+RUN cd frontend/email-builder && yarn install --frozen-lockfile
 
 # Copy all frontend source
 COPY frontend/ ./frontend/
