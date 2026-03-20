@@ -176,7 +176,8 @@ func main() {
 		urlCfg = initUrlConfig(ko)
 
 		// Initialize i18n language map.
-		i18n = initI18n(ko.MustString("app.lang"), fs)
+		// Fall back to "en" if app.lang is empty (e.g. DB settings overwrote it).
+		i18n = initI18n(func() string { l := ko.String("app.lang"); if l == "" { return "en" }; return l }(), fs)
 
 		// Initialize the media store.
 		media = initMediaStore(ko)
