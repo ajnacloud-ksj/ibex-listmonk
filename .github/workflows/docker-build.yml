@@ -9,13 +9,100 @@ on:
   workflow_dispatch:
 
 jobs:
+  prepare-version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.newTag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bump version
+        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
+        id: bump
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: 'enhanced-v'
+          default_bump: patch
+          create_annotated_tag: true
+          dry_run: true
+
   build:
-    uses: ajnacloud-ksj/ajna-github-workflows/.github/workflows/reusable-docker-build.yml@main
-    with:
-      dockerfile_path: './Dockerfile'
-      context_path: '.'
-      enable_auto_tag: true
-      enable_latest_tag: true
-      tag_prefix: 'enhanced-v'
-    secrets:
-      gh_token: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    needs: prepare-version
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Add version and latest tags
+        if: ${{ (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
+        id: add-tags
+        run: |
+          BASE_TAGS="${{ steps.meta.outputs.tags }}"
+          EXTRA_TAGS=""
+          if [ -n "${{ needs.prepare-version.outputs.new_version }}" ]; then
+            EXTRA_TAGS="$EXTRA_TAGS
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ needs.prepare-version.outputs.new_version }}"
+          fi
+          EXTRA_TAGS="$EXTRA_TAGS
+          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest"
+          echo "FINAL_TAGS<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BASE_TAGS$EXTRA_TAGS" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: '.'
+          file: './Dockerfile'
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.add-tags.outputs.FINAL_TAGS || steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  push-tag:
+    runs-on: ubuntu-latest
+    needs: [prepare-version, build]
+    if: ${{ needs.prepare-version.outputs.new_version != '' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') && github.event_name != 'pull_request' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push version tag
+        run: |
+          git rev-parse "${{ needs.prepare-version.outputs.new_version }}" >/dev/null 2>&1 || git tag "${{ needs.prepare-version.outputs.new_version }}"
+          git push origin "${{ needs.prepare-version.outputs.new_version }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
